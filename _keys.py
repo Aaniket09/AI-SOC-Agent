@@ -1,7 +1,19 @@
 # Get your API Key: https://platform.openai.com/settings/organization/api-keys
-OPENAI_API_KEY = "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"
-LOG_ANALYTICS_WORKSPACE_ID = "60c7f53e-249a-4077-b68e-55a4ae877d7c"
+import os
+from dotenv import load_dotenv
 
-SUBSCRIPTION_ID = "3c95e63a-895a-4386-991e-edbbf57de5c8"
-RESOURCE_GROUP_NAME = "cyber-range-admin-soc"
-SENTINEL_WORKSPACE_NAME = "LAW-Cyber-Range"
+# Load environment variables from the .env file
+load_dotenv()
+
+# Access the variables
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+LOG_ANALYTICS_WORKSPACE_ID = os.getenv("LOG_ANALYTICS_WORKSPACE_ID")
+
+# Sentinel / Azure Management Variables
+SUBSCRIPTION_ID = os.getenv("SUBSCRIPTION_ID")
+RESOURCE_GROUP_NAME = os.getenv("RESOURCE_GROUP_NAME")
+SENTINEL_WORKSPACE_NAME = os.getenv("SENTINEL_WORKSPACE_NAME")
+
+# Optional: Add a check to ensure keys are loaded
+if not OPENAI_API_KEY:
+    raise ValueError("FATAL ERROR: OPENAI_API_KEY not found in .env file.")
