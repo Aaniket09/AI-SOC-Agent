@@ -1,4 +1,5 @@
 from colorama import Fore
+import GUARDRAILS
 
 FORMATTING_INSTRUCTIONS = """
 Return your findings in the following format:
@@ -311,6 +312,32 @@ SYSTEM_PROMPT_TOOL_SELECTION = {
 """)
 }
 
+SYSTEM_PROMPT_DETECTION_ENGINEER = {
+    "role": "system",
+    "content": (
+        "You are a Senior Detection Engineer and KQL Expert. Your goal is to write a high-fidelity KQL detection rule based on confirmed malicious logs provided by a threat hunter.\n\n"
+        
+        "LOGIC RULES:\n"
+        "1. SPECIFICITY: Your query must target the SPECIFIC Indicators of Compromise (IOCs) found in the evidence.\n"
+        "2. NOISE REDUCTION: Do NOT write broad queries.\n"
+        "3. SCHEMA ACCURACY: You may ONLY use the following Tables and Columns. Do NOT invent columns (e.g., use 'ActionType' not 'LogonResult').\n\n"
+        
+        f"ALLOWED SCHEMA:\n{str(GUARDRAILS.ALLOWED_TABLES)}\n\n" # <--- INJECT SCHEMA HERE
+        
+        "4. ENTITY MAPPING: You must project TimeGenerated, DeviceName, Account, and IP.\n"
+        "5. SYNTAX: Return strictly valid KQL.\n\n"
+        
+        "OUTPUT FORMAT:\n"
+        "Return a JSON object:\n"
+        "{\n"
+        "  \"kql_query\": \"DeviceProcessEvents | where ...\",\n"
+        "  \"rule_name\": \"Brief, professional title\",\n"
+        "  \"description\": \"Technical description of what this rule catches\",\n"
+        "  \"severity\": \"High | Medium | Low\"\n"
+        "}"
+    )
+}
+
 TOOLS = [
     {
         "type": "function",
@@ -455,3 +482,38 @@ def build_threat_hunt_prompt(user_prompt: str, table_name: str, log_data: str) -
     )
 
     return {"role": "user", "content": full_prompt}
+
+def build_detection_rule_prompt(table_name: str, threat_finding: dict) -> dict:
+    
+    title = threat_finding.get('title', 'Unknown Threat')
+    description = threat_finding.get('description', 'No description')
+    iocs = ", ".join(threat_finding.get('indicators_of_compromise', []))
+    
+    # OPTIMIZATION: Slice logs to first 10 lines to save tokens/cost
+    # The pattern should be visible in the first few occurrences.
+    all_logs = threat_finding.get('log_lines', [])
+    sliced_logs = all_logs[:10] 
+    log_evidence = "\n".join(sliced_logs)
+    
+    user_content = f"""
+    TASK: Generate a Custom KQL Detection Rule for the following confirmed threat.
+
+    CONTEXT:
+    Table: {table_name}
+    Threat Title: {title}
+    Description: {description}
+    Detected IOCs: {iocs}
+
+    LOG EVIDENCE (Use these exact values in your query logic):
+    {log_evidence}
+
+    REQUIREMENTS:
+    1. Write a KQL query that would detect this specific pattern if it happens again.
+    2. Use the 'where' operator to filter for the specific IOCs found above.
+    3. Ensure the query projects the relevant timestamp and entities.
+    """
+    
+    return {
+        "role": "user",
+        "content": user_content
+    }
