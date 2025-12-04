@@ -95,7 +95,7 @@ model = MODEL_MANAGEMENT.choose_model(model, number_of_tokens)
 
 # Ensure the selected model is allowed / valid
 GUARDRAILS.validate_model(model)
-print(f"{Fore.LIGHTGREEN_EX}Initiating cognitive threat hunt against targete logs...\n")
+print(f"{Fore.LIGHTGREEN_EX}Initiating cognitive threat hunt against target logs...\n")
 
 # Grab the time the analysis started for calculating analysis duration
 start_time = time.time()
