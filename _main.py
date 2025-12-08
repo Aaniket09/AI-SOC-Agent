@@ -228,6 +228,7 @@ for threat in hunt_results['findings']:
 
         try:
             rule_data = json.loads(det_response.choices[0].message.content)
+            rule_data['kql_query'] = GUARDRAILS.sanitize_kql_query(rule_data['kql_query'])
             
             # --- NEW GUARDRAIL BLOCK ---
             # Validate 1: Safety (Destructive commands)

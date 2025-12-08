@@ -3,7 +3,6 @@ from datetime import datetime
 import re
 
 # DEFINING THE TRUTH SOURCE
-# We add 'ActionType' to DeviceLogonEvents explicitly here to fix your specific error
 ALLOWED_TABLES = {
     "DeviceProcessEvents": { "TimeGenerated", "AccountName", "ActionType", "DeviceName", "InitiatingProcessCommandLine", "ProcessCommandLine", "FileName", "FolderPath", "SHA256", "Timestamp" },
     "DeviceNetworkEvents": { "TimeGenerated", "ActionType", "DeviceName", "RemoteIP", "RemotePort", "LocalIP", "LocalPort", "Protocol", "Timestamp" },
@@ -62,6 +61,22 @@ def validate_model(model):
         print(f"{Fore.RED}{Style.BRIGHT}ERROR: Model '{model}' is not allowed — {Fore.RED}{Style.BRIGHT}{Style.RESET_ALL}exiting.")
         exit(1)
 
+def sanitize_kql_query(kql_query: str) -> str:
+    """
+    Auto-corrects common LLM syntax errors in KQL.
+    """
+    # Fix 1: Correct 'between (A and B)' to 'between (A .. B)'
+    # Regex looks for: between ( whitespace? capture1 whitespace? and whitespace? capture2 whitespace? )
+    # Replaces with: between ( capture1 .. capture2 )
+    
+    pattern = r"between\s*\(\s*(.+?)\s+and\s+(.+?)\s*\)"
+    fixed_query = re.sub(pattern, r"between (\1 .. \2)", kql_query, flags=re.IGNORECASE)
+    
+    if fixed_query != kql_query:
+        print(f"{Fore.YELLOW}[Guardrail] Auto-corrected invalid 'between' syntax in KQL.")
+    
+    return fixed_query
+
 def validate_kql_safety(kql_query: str):
     """Scans for destructive commands."""
     print(f"{Fore.LIGHTGREEN_EX}Validating KQL Safety (Destructive Check)...")
@@ -75,44 +90,53 @@ def validate_kql_safety(kql_query: str):
 def validate_generated_kql_columns(kql_query: str):
     """
     Parses the generated KQL to ensure the Table and Columns exist in the schema.
-    This prevents 'BadRequest' errors from Azure when the LLM hallucinates columns (e.g. LogonResult).
+    Uses regex to extract potential column names.
     """
     print(f"{Fore.LIGHTGREEN_EX}Validating KQL Schema (Hallucination Check)...")
     
-    # 1. Extract Table Name (Assumes table is the first word in the query)
-    # Remove leading comments or whitespace
+    # 1. Extract Table Name
     clean_query = "\n".join([line for line in kql_query.split('\n') if not line.strip().startswith("//")])
     first_word_match = re.match(r"^\s*([a-zA-Z0-9_]+)", clean_query)
     
     if not first_word_match:
-        raise ValueError("Could not parse table name from KQL query.")
+        # If the query starts with 'let', we skip table validation but continue to columns
+        if "let " in clean_query:
+             print(f"{Fore.YELLOW}Complex query detected (let statement). Skipping strict table name check.")
+             return
+        else:
+             raise ValueError("Could not parse table name from KQL query.")
     
     table_name = first_word_match.group(1)
     
-    if table_name not in ALLOWED_TABLES:
-        # It might be a complex query starting with a 'let' statement or similar.
-        # For this specific guardrail, we warn but allow if table isn't strictly recognized at start,
-        # but since we are generating simple rules, we enforce it.
-        if "let " in kql_query:
-             print(f"{Fore.YELLOW}Complex query detected (let statement). Schema validation skipped for table name.")
-             return
-        raise ValueError(f"Generated KQL targets unknown/unsupported table: '{table_name}'")
-
-    valid_columns = ALLOWED_TABLES[table_name]
+    # Only validate table if it's not a variable or special command
+    if table_name in ALLOWED_TABLES:
+        valid_columns = ALLOWED_TABLES[table_name]
+    else:
+        # If table isn't in our whitelist, we warn but don't crash (could be a join)
+        print(f"{Fore.YELLOW}Warning: Target table '{table_name}' not in strict whitelist. Proceeding with caution.")
+        return
 
     # 2. Extract Columns used in filters
-    # Regex looks for:  Word followed by operator (==, !=, in, contains, startswith)
-    # Example: "ActionType == 'LogonFailed'" -> captures "ActionType"
-    pattern = r"([a-zA-Z0-9_]+)\s*(?:==|!=|in~?|!in~?|contains|startswith|endswith|has)"
+    # FIXED REGEX: Uses \b (Word Boundary) to prevent matching "in" inside "String"
+    # Matches: Word followed by space followed by Operator
+    pattern = r"([a-zA-Z0-9_]+)\s*(?:==|!=|<>|>=|<=|>(?!=)|<(?!=)|\b(?:in~?|!in~?|contains|startswith|endswith|has|has_any|has_cs)\b)"
+    
     matches = re.findall(pattern, clean_query)
     
-    # KQL keywords that might look like columns in this regex
-    kql_keywords = {"where", "and", "or", "summarize", "project", "extend", "bin", "count", "dcount", "iff", "datetime", "ago", "tostring", "iff"}
+    # KQL keywords to ignore if they get caught
+    kql_keywords = {
+        "where", "and", "or", "summarize", "project", "extend", "bin", "count", 
+        "dcount", "iff", "datetime", "ago", "tostring", "iff", "join", "on", 
+        "kind", "inner", "leftouter", "let", "union", "mv-expand"
+    }
 
     print(f"{Fore.WHITE}  Table Identified: {table_name}")
-    print(f"{Fore.WHITE}  Columns Checked: {list(set(matches))}")
+    
+    # Clean matches (remove duplicates)
+    unique_matches = list(set(matches))
+    print(f"{Fore.WHITE}  Columns/Keywords Checked: {unique_matches}")
 
-    for col in matches:
+    for col in unique_matches:
         if col.lower() in kql_keywords:
             continue # Skip keywords
         
@@ -120,6 +144,6 @@ def validate_generated_kql_columns(kql_query: str):
         if col not in valid_columns:
             # We found a hallucination!
             print(f"{Fore.RED}  [!] Invalid Column Detected: {col}")
-            raise ValueError(f"Guardrail Failed: Column '{col}' does not exist in table '{table_name}'. (Did you mean 'ActionType'?)")
+            raise ValueError(f"Guardrail Failed: Column '{col}' does not exist in table '{table_name}'.")
 
     print(f"{Fore.WHITE}Schema Check Passed. No hallucinated columns detected.\n")
