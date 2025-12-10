@@ -18,8 +18,6 @@ The **AI Agentic SOC Analyst** is a CLI-based tool designed to act as a force mu
 3.  **Decide:** Analyzes returned logs using LLMs to identify high-fidelity threats mapped to MITRE ATT&CK.
 4.  **Act:** Offers active remediation (VM Isolation, AV Scans) and automated detection engineering (deploying rules to Sentinel).
 
-![Agent Interface Demo](docs/images/agent_demo_placeholder.png)
-
 ---
 
 ## ✨ Key Features
@@ -53,6 +51,8 @@ The agent follows a modular architecture separating logic, API execution, and sa
 * **`guardrails.py`**: Validation logic for KQL schema, destructive commands, and time limits.
 * **`prompt_management.py`**: Stores system personas (Threat Hunter, Detection Engineer) and prompt builders.
 * **`utilities.py`**: UI formatting (Tabulate) and log parsing.
+
+<img width="20149" height="3736" alt="Binary Decision Flow-2025-12-10-212825" src="https://github.com/user-attachments/assets/12681ec8-5d91-4092-ac37-21251b00a91f" />
 
 ---
 
