@@ -61,8 +61,8 @@ def display_log_evidence_table(log_lines):
     df.fillna("", inplace=True)
 
     # Truncate very long cells (like massive command lines) to keep table readable
-    # You can adjust '50' to whatever width fits your screen
-    df = df.applymap(lambda x: (str(x)[:60] + '...') if len(str(x)) > 60 else str(x))
+    # You can adjust '100' to whatever width fits your screen
+    df = df.map(lambda x: (str(x)[:100] + '...') if len(str(x)) > 100 else str(x))
 
     # 4. Print using Tabulate
     # 'grid' format looks like SQL/Excel
