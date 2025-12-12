@@ -18,8 +18,6 @@ The **AI Agentic SOC Analyst** is a CLI-based tool designed to act as a force mu
 3.  **Decide:** Analyzes returned logs using LLMs to identify high-fidelity threats mapped to MITRE ATT&CK.
 4.  **Act:** Offers active remediation (VM Isolation, AV Scans) and automated detection engineering (deploying rules to Sentinel).
 
-![Agent Interface Demo](docs/images/agent_demo_placeholder.png)
-
 ---
 
 ## ✨ Key Features
@@ -53,6 +51,8 @@ The agent follows a modular architecture separating logic, API execution, and sa
 * **`guardrails.py`**: Validation logic for KQL schema, destructive commands, and time limits.
 * **`prompt_management.py`**: Stores system personas (Threat Hunter, Detection Engineer) and prompt builders.
 * **`utilities.py`**: UI formatting (Tabulate) and log parsing.
+
+<img width="20149" height="3736" alt="Binary Decision Flow-2025-12-10-212825" src="https://github.com/user-attachments/assets/12681ec8-5d91-4092-ac37-21251b00a91f" />
 
 ---
 
@@ -96,25 +96,32 @@ The agent follows a modular architecture separating logic, API execution, and sa
 ## 💻 Usage Walkthrough
 
 ### 1. Threat Hunting
-**User:** "Check for any failed login attempts on device 'windows-target-1' in the last 24 hours."
+**User:** "I'm worried there might be some malicious PowerShell activities going on workstation aniket-ai-soc-l in the past 4 hours."
 
 **Agent:** Generates KQL, queries Azure, and presents a structured table of evidence.
 
-![Threat Hunt Table Results](docs/images/hunt_table_placeholder.png)
+- User prompt and mapping to a relevant KQL query demo:
+<img width="2132" height="875" alt="Screenshot 2025-12-10 163808" src="https://github.com/user-attachments/assets/b4bc730f-01a9-4449-8baf-7d42d18e9e6d" />
+
+- Log Analytics result and model selection based on estimated cost:
+<img width="1878" height="918" alt="Screenshot 2025-12-10 164219" src="https://github.com/user-attachments/assets/ebdab1ce-5108-4d18-859d-e0d31a3c19dd" />
+
+- Threat hunt result displaying with severity levels and MITRE mapping:
+<img width="2148" height="1363" alt="Screenshot 2025-12-10 164810" src="https://github.com/user-attachments/assets/66583c44-86aa-40ec-bcc5-683f47dfc4a5" />
 
 ### 2. Remediation
 If a High Confidence threat is found, the agent offers immediate action.
 
-**Agent:** "High confidence threat detected on host: windows-target-1. RECOMMENDATION: Isolate VM. Proceed? (yes/no)"
+**Agent:** "High confidence threat detected on host: aniket-ai-soc-l. Would you like to isolate this VM? (yes/no)"
 
-![Remediation Prompt](docs/images/remediation_placeholder.png)
+<img width="1671" height="259" alt="Screenshot 2025-12-10 165117" src="https://github.com/user-attachments/assets/9a6f5273-da8f-495f-8e9e-4cd4ab05caf1" />
 
 ### 3. Rule Creation (Closing the Loop)
 The agent generates a KQL rule to prevent future attacks and deploys it to Sentinel.
 
-**Agent:** "Initiating detection rule generation... Proposed Sentinel Rule: 'Brute Force from IP 10.x.x.x'. Deploy to Sentinel?"
+**Agent:** "Initiating detection rule generation... Proposed Sentinel Rule: 'User-launched PowerShell_ISE.exe invoked cmd.exe to write 'Initializing Attack' to C:\Temp\Steal_Data\init.txt'. Deploy to Sentinel?"
 
-![Rule Deployment Success](docs/images/rule_deployment_placeholder.png)
+<img width="1880" height="741" alt="Screenshot 2025-12-10 165511" src="https://github.com/user-attachments/assets/a9c3460a-7161-4ca8-9563-7a90a53f256f" />
 
 ---
 
