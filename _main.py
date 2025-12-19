@@ -244,12 +244,10 @@ for threat in hunt_results['findings']:
             print(f"Query: {Fore.CYAN}{rule_data['kql_query']}{Style.RESET_ALL}")
             
             # EXTRACT MITRE
-            mitre_info = threat.get("mitre", {})
-            tactic_found = mitre_info.get("tactic")
-            technique_found = mitre_info.get("id")
+            raw_tactic = rule_data.get("mitre_tactic", "") 
+            raw_technique = rule_data.get("mitre_technique_id", "")
             
-            if tactic_found:
-                 print(f"MITRE: {Fore.YELLOW}{tactic_found} / {technique_found}{Style.RESET_ALL}")
+            print(f"MITRE Info: {Fore.YELLOW}{raw_tactic} / {raw_technique}{Style.RESET_ALL}")
 
             confirm_deploy = input(f"\n{Fore.RED}{Style.BRIGHT}Deploy this rule to Microsoft Sentinel? (yes/no): {Style.RESET_ALL}").strip().lower()
 
@@ -263,8 +261,8 @@ for threat in hunt_results['findings']:
                     kql_query=rule_data['kql_query'],
                     description=rule_data['description'],
                     severity=rule_data['severity'],
-                    mitre_tactic=tactic_found,
-                    mitre_technique=technique_found
+                    mitre_tactic=raw_tactic,      
+                    mitre_technique=raw_technique
                 )
                 
                 if success_sentinel:

@@ -71,56 +71,19 @@ def run_antivirus_scan(token, machine_id, scan_type="Quick"):
     except Exception:
         return False
 
-# --- HELPER: MITRE MAPPING ---
-def get_valid_tactics_list(raw_tactic_string):
+def normalize_sentinel_tactic(tactic_string):
     """
-    Splits a complex string like "Credential Access / Collection" 
-    and returns a list of valid Sentinel Enums ["CredentialAccess", "Collection"].
+    Converts human-readable MITRE tactics into Azure Sentinel PascalCase Enum.
+    Logic: "Defense Evasion" -> Title Case -> "DefenseEvasion" (Remove Spaces)
     """
-    if not raw_tactic_string:
-        return []
-
-    # Sentinel Allowed Values (Case-Insensitive map)
-    sentinel_map = {
-        "reconnaissance": "Reconnaissance",
-        "resourcedevelopment": "ResourceDevelopment",
-        "initialaccess": "InitialAccess",
-        "execution": "Execution",
-        "persistence": "Persistence",
-        "privilegeescalation": "PrivilegeEscalation",
-        "defenseevasion": "DefenseEvasion",
-        "credentialaccess": "CredentialAccess",
-        "discovery": "Discovery",
-        "lateralmovement": "LateralMovement",
-        "collection": "Collection",
-        "commandandcontrol": "CommandAndControl",
-        "c2": "CommandAndControl",
-        "exfiltration": "Exfiltration",
-        "impact": "Impact"
-    }
-
-    valid_tactics = []
-    
-    # Split by common delimiters: forward slash, comma, or pipe
-    # "Credential Access / Collection" -> ["Credential Access ", " Collection"]
-    raw_parts = re.split(r'[/,|]', raw_tactic_string)
-    
-    for part in raw_parts:
-        # Normalize: remove spaces, lowercase
-        clean_part = re.sub(r'[^a-zA-Z]', '', part).lower()
-        mapped_val = sentinel_map.get(clean_part)
-        if mapped_val:
-            valid_tactics.append(mapped_val)
-            
-    # Remove duplicates
-    return list(set(valid_tactics))
+    if not tactic_string:
+        return None
+    clean_text = tactic_string.title()
+    normalized = re.sub(r'[^a-zA-Z0-9]', '', clean_text)
+    return normalized
 
 
 def create_sentinel_alert_rule(subscription_id, resource_group, workspace_name, rule_name, kql_query, description, severity, mitre_tactic=None, mitre_technique=None):
-    """
-    Creates a Scheduled Query Rule in Microsoft Sentinel via Azure Management API.
-    Handles multiple tactics and techniques.
-    """
     print(f"{Fore.CYAN}Authenticating to Azure Management API (Sentinel)...")
     credential = DefaultAzureCredential()
     token = credential.get_token("https://management.azure.com/.default")
@@ -132,6 +95,30 @@ def create_sentinel_alert_rule(subscription_id, resource_group, workspace_name, 
 
     rule_id = str(uuid.uuid4())
 
+    # --- GENERALIZED MAPPING LOGIC ---
+    # 1. Tactics: Normalize the input string
+    tactics_list = []
+    if mitre_tactic:
+        normalized_tactic = normalize_sentinel_tactic(mitre_tactic)
+        if normalized_tactic:
+            tactics_list.append(normalized_tactic)
+    
+    # 2. Techniques: STRICT FORMATTING (T#### only)
+    # The API rejects 'T1059.001', so we must strip the suffix.
+    techniques_list = []
+    if mitre_technique:
+        # Regex explanation:
+        # T\d{4}  -> Matches exactly 'T' followed by 4 digits (e.g., T1059)
+        # We IGNORE any following characters like .001
+        ids = re.findall(r'T\d{4}', mitre_technique)
+        if ids:
+            techniques_list = list(set(ids)) # Deduplicate
+
+    # Guardrail: If tactic is missing, default to Execution
+    if not tactics_list:
+        print(f"{Fore.YELLOW}[WARN] No MITRE Tactic provided. Defaulting to 'Execution'.")
+        tactics_list = ["Execution"]
+
     url = (
         f"https://management.azure.com/subscriptions/{subscription_id}/"
         f"resourceGroups/{resource_group}/providers/Microsoft.OperationalInsights/"
@@ -139,27 +126,12 @@ def create_sentinel_alert_rule(subscription_id, resource_group, workspace_name, 
         f"alertRules/{rule_id}?api-version=2024-01-01-preview"
     )
 
-    # 1. Severity Mapping
-    severity_map = { "High": "High", "Medium": "Medium", "Low": "Low" }
-    
-    # 2. Tactic Mapping (Handle lists)
-    tactics_list = get_valid_tactics_list(mitre_tactic)
-
-    # 3. Technique Mapping (Extract IDs like T1059)
-    techniques_list = []
-    if mitre_technique:
-        ids = re.findall(r'T\d{4}', mitre_technique)
-        if ids:
-            techniques_list = list(set(ids)) # Deduplicate
-        elif mitre_technique.startswith("T"):
-            techniques_list = [mitre_technique]
-
     payload = {
         "kind": "Scheduled",
         "properties": {
             "displayName": rule_name,
             "description": f"{description} (AI Generated)",
-            "severity": severity_map.get(severity, "Medium"),
+            "severity": severity,
             "enabled": True,
             "query": kql_query,
             "queryFrequency": "PT1H",
@@ -169,12 +141,12 @@ def create_sentinel_alert_rule(subscription_id, resource_group, workspace_name, 
             "suppressionDuration": "PT1H",
             "suppressionEnabled": False,
             "tactics": tactics_list,     
-            "techniques": techniques_list 
+            "techniques": techniques_list # Now contains only ['T1059'], not ['T1059.001']
         }
     }
 
     try:
-        print(f"{Fore.LIGHTGREEN_EX}Sending rule to Sentinel with Tactics: {tactics_list}...")
+        print(f"{Fore.LIGHTGREEN_EX}Sending rule to Sentinel with Tactics: {tactics_list} & Techniques: {techniques_list}...")
         resp = requests.put(url, headers=headers, json=payload, timeout=30)
         
         if resp.status_code in [200, 201]:

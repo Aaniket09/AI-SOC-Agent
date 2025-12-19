@@ -158,11 +158,17 @@ def validate_generated_kql_columns(kql_query: str):
 
     for col in unique_matches:
         if col.lower() in kql_keywords:
-            continue # Skip keywords
+            continue 
         
-        # Check if column is valid
+        # --- NEW FIX: IGNORE SUPER LONG STRINGS ---
+        # If the "column" is longer than 50 chars, it's definitely 
+        # a base64 string or hash that the LLM forgot to quote.
+        if len(col) > 50:
+            print(f"{Fore.YELLOW}[Guardrail] Warning: Ignoring potential column '{col[:15]}...' (Too long, likely an unquoted value).")
+            continue
+        # ------------------------------------------
+
         if col not in valid_columns:
-            # We found a hallucination!
             print(f"{Fore.RED}  [!] Invalid Column Detected: {col}")
             raise ValueError(f"Guardrail Failed: Column '{col}' does not exist in table '{table_name}'.")
 

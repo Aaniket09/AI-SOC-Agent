@@ -82,7 +82,7 @@ Responsibilities:
   - Command & control (e.g., beaconing, encoded PowerShell)
   - Persistence (e.g., registry run keys, services)
   - Data exfiltration (e.g., archive + upload)
-- Map behaviors to MITRE techniques with confidence levels
+- Map behaviors to MITRE tactics, techniques with confidence levels
 - Extract IOCs: filenames, hashes, IPs, domains, ports, accounts, device names, process chains
 - Recommend actions: Investigate, Monitor, Escalate, or Ignore — with clear justification
 - Reduce false positives using context (e.g., unusual parent-child processes, LOLBins)
@@ -104,7 +104,7 @@ Detect:
 - Rare or unsigned binaries
 - Suspicious use of system tools (e.g., net.exe, schtasks)
 
-Map to relevant MITRE ATT&CK techniques with confidence levels.
+Map to relevant MITRE ATT&CK tactics, techniques with confidence levels.
 
 Extract IOCs: process names, hashes, command-line args, user accounts, parent/child process paths.
 
@@ -121,7 +121,7 @@ Detect:
 - Rare or first-time domain/IP contacts
 - Connections to known malicious infrastructure
 
-Map activity to MITRE ATT&CK techniques with confidence levels.
+Map activity to MITRE ATT&CK tactics, techniques with confidence levels.
 
 Extract IOCs: remote IPs/domains, ports, protocols, device names, process initiators.
 
@@ -138,7 +138,7 @@ Detect:
 - New or uncommon service account usage
 - Logons from suspicious or compromised devices
 
-Map activity to MITRE ATT&CK techniques with confidence levels.
+Map activity to MITRE ATT&CK tactics, techniques with confidence levels.
 
 Extract IOCs: usernames, device names, logon types, timestamps, IPs.
 
@@ -154,7 +154,7 @@ Detect:
 - UAC bypass methods or shell replacements
 - Registry tampering by non-admin or unusual processes
 
-Map behavior to MITRE ATT&CK techniques with confidence levels.
+Map behavior to MITRE ATT&CK tactics, techniques with confidence levels.
 
 Extract IOCs: registry paths, process names, command-line args, user accounts.
 
@@ -183,7 +183,7 @@ Detect:
 - Known malicious filenames or hashes
 - Tampering with system or config files
 
-Map behavior to MITRE ATT&CK techniques.
+Map behavior to MITRE ATT&CK tactics, techniques.
 
 Extract IOCs: filenames, hashes, paths, process relationships.
 
@@ -332,13 +332,19 @@ SYSTEM_PROMPT_DETECTION_ENGINEER = {
         "5. SYNTAX TRAP: When using the 'between' operator, you MUST use '..' range syntax (e.g., 'between (Start .. End)'). Do NOT use 'between ... and ...'.\n"
         "6. ENTITY MAPPING: Project DeviceName, AccountName, and TimeGenerated.\n\n"
         
-        "OUTPUT FORMAT:\n"
-        "Return a JSON object:\n"
+        "7. MITRE MAPPING (MANDATORY):\n"
+        "   - You MUST identify the standard MITRE Tactic associated with your chosen Technique.\n"
+        "   - Example: If you choose 'T1027', the tactic is 'Defense Evasion'.\n"
+        "   - Example: If you choose 'T1003', the tactic is 'Credential Access'.\n\n"
+        
+        "OUTPUT FORMAT (Strict JSON):\n"
         "{\n"
-        "  \"kql_query\": \"DeviceFileEvents | where ...\",\n"
-        "  \"rule_name\": \"Brief, professional title\",\n"
-        "  \"description\": \"Technical description of what this rule catches\",\n"
-        "  \"severity\": \"High | Medium | Low\"\n"
+        "  \"kql_query\": \"...\",\n"
+        "  \"rule_name\": \"...\",\n"
+        "  \"description\": \"...\",\n"
+        "  \"severity\": \"High | Medium | Low\",\n"
+        "  \"mitre_tactic\": \"<Insert Tactic Name Here>\",\n"     
+        "  \"mitre_technique_id\": \"<Insert Technique ID Here>\"\n" 
         "}"
     )
 }
