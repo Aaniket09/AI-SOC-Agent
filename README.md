@@ -5,6 +5,8 @@
 ![OpenAI](https://img.shields.io/badge/AI-OpenAI%20GPT4-green?style=for-the-badge&logo=openai&logoColor=white)
 ![Security](https://img.shields.io/badge/Security-MDE%20%7C%20Graph-red?style=for-the-badge)
 
+### 📖 [Read the full Engineering Case Study on Medium](https://medium.com/@aniketagarwal57/beyond-the-hype-building-a-reliable-full-cycle-ai-soc-agent-12aaf9dfb004)
+
 **An autonomous cybersecurity agent that translates natural language into KQL, hunts for threats across Microsoft Sentinel & Defender for Endpoint, performs automated remediation, and engineers detection rules.**
 
 ---
